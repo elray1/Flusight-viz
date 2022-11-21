@@ -71,9 +71,9 @@ jobs:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
     
-    - name: Install python dependencies 
-      run: pip3 install -r visualization/requirements.txt
-      # working-directory: ./covid19-forecast-hub
+    # - name: Install python dependencies 
+    #   run: pip3 install -r visualization/requirements.txt
+    #   # working-directory: ./covid19-forecast-hub
       
     # - name: Install R dependencies (for covidData + covidHubUtils)
     #   # working-directory: ./covid19-forecast-hub
@@ -81,7 +81,7 @@ jobs:
     #   # env:
     #   #   GITHUB_PAT: ${{ secrets.GH_TOKEN }}
     
-    - name: Install R dependencies 
+    - name: Install R dependencies
       working-directory: ./Flusight-viz
       run: Rscript install_dependencies.R
       # env:
