@@ -39,8 +39,8 @@ library(jsonlite)
 # - TRUE will generate forecast files only for the latest week. This will
 # be the appropriate option most of the time
 
-generate_latest_only <- FALSE
-# generate_latest_only <- TRUE
+# generate_latest_only <- FALSE
+generate_latest_only <- TRUE
 
 # path to local clone of covid19-forecast-hub repo
 hub_repo_path <- "../Flusight-forecast-data"
@@ -85,41 +85,25 @@ for (target_var in c("hosp")) {
     }
     for (as_of in as.character(as_ofs)) {
         forecasts <- covidHubUtils::load_forecasts(
-           models = models, 
-           dates = as.Date(as_of) + 2, 
+           models = models,
+           dates = as.Date(as_of) + 2,
            date_window_size = 6,
-           locations = locations, 
+           locations = locations,
            types = "quantile",
-           targets = targets, 
-           source = "local_hub_repo", 
+           targets = targets,
+           source = "local_hub_repo",
            hub_repo_path = hub_repo_path,
            data_processed_subpath = "data-forecasts/",
-           as_of = NULL, 
-           verbose = FALSE, 
+           as_of = NULL,
+           verbose = FALSE,
            hub = "FluSight"
-           ) 
+        )
         all_forecasts <- covidHubUtils::align_forecasts(forecasts) %>% 
            dplyr::filter(
             relative_horizon <= max_horizon,
             format(quantile, digits = 3, nsmall = 3) %in%
             format(c(0.025, 0.25, 0.5, 0.75, 0.975), digits = 3, nsmall = 3)
             )
-
-        # # Leaving old loading step for reference
-        # all_forecasts <- covidEnsembles::load_covid_forecasts_relative_horizon(
-        #     hub = "US",
-        #     source = "local_hub_repo",
-        #     hub_repo_path = hub_repo_path,
-        #     data_processed_subpath = "data-processed/",
-        #     monday_dates = as.Date(as_of) + 2,
-        #     as_of = NULL,
-        #     model_abbrs = models,
-        #     timezero_window_size = 6,
-        #     locations = locations,
-        #     targets = targets,
-        #     max_horizon = max_horizon,
-        #     required_quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975)
-        # )
 
         for (location in unique(all_forecasts$location)) {
             target_filename <- paste0(
@@ -182,7 +166,8 @@ for (target_var in c("hosp")) {
     }
 }
 
-# get list of all models
+# get list of all models and the initial as of date
+initial_as_of <- as.character(min(available_as_ofs[["hosp"]]))
 models <- NULL
 for (target_var in c("hosp")) {
     # locations in viz -- should really be target specific, but here we
@@ -201,11 +186,12 @@ for (target_var in c("hosp")) {
             if (file.exists(file_path)) {
                 forecasts <- jsonlite::fromJSON(readLines(file_path))
                 models <- unique(c(models, names(forecasts)))
+                initial_as_of <- max(initial_as_of, as_of)
             }
         }
     }
 }
-# sort, and put COVIDhub-ensemble and COVIDhub-baseline at the beginning
+# sort, and put Flusight-ensemble and Flusight-baseline at the beginning
 models <- sort(models)
 models <- c(
     c("Flusight-ensemble", "Flusight-baseline"),
@@ -213,3 +199,5 @@ models <- c(
 )
 writeLines(jsonlite::toJSON(models), "static/data/models.json")
 
+writeLines(jsonlite::toJSON(list(initial_as_of = initial_as_of), auto_unbox = TRUE),
+           "static/data/initial_as_of.json")
