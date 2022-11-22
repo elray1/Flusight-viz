@@ -84,6 +84,7 @@ for (target_var in c("hosp")) {
         as_ofs <- max(as_ofs)
     }
     for (as_of in as.character(as_ofs)) {
+        print(as_of)
         forecasts <- covidHubUtils::load_forecasts(
            models = models,
            dates = as.Date(as_of) + 2,
@@ -98,70 +99,72 @@ for (target_var in c("hosp")) {
            verbose = FALSE,
            hub = "FluSight"
         )
-        all_forecasts <- covidHubUtils::align_forecasts(forecasts) %>% 
-           dplyr::filter(
-            relative_horizon <= max_horizon,
-            format(quantile, digits = 3, nsmall = 3) %in%
-            format(c(0.025, 0.25, 0.5, 0.75, 0.975), digits = 3, nsmall = 3)
-            )
+        if (!is.null(forecasts)) {
+            all_forecasts <- covidHubUtils::align_forecasts(forecasts) %>% 
+            dplyr::filter(
+                relative_horizon <= max_horizon,
+                format(quantile, digits = 3, nsmall = 3) %in%
+                format(c(0.025, 0.25, 0.5, 0.75, 0.975), digits = 3, nsmall = 3)
+                )
 
-        for (location in unique(all_forecasts$location)) {
-            target_filename <- paste0(
-                "static/data/forecasts/",
-                target_var, "_", location, "_", as_of,  ".json")
+            for (location in unique(all_forecasts$location)) {
+                target_filename <- paste0(
+                    "static/data/forecasts/",
+                    target_var, "_", location, "_", as_of,  ".json")
 
-            location_forecasts <- all_forecasts %>%
-                dplyr::filter(location == UQ(location))
+                location_forecasts <- all_forecasts %>%
+                    dplyr::filter(location == UQ(location))
 
-            location_models <- unique(location_forecasts$model)
-            location_forecasts_by_model <- purrr::map(
-                location_models,
-                function (model) {
-                    location_model_forecasts <- location_forecasts %>%
-                        dplyr::filter(model == UQ(model)) %>%
-                        dplyr::select(
-                            target_end_date,
-                            quantile,
-                            value) %>%
-                        tidyr::pivot_wider(
-                            names_from = "quantile",
-                            names_prefix = "q",
-                            values_from = "value"
-                        )
+                location_models <- unique(location_forecasts$model)
+                location_forecasts_by_model <- purrr::map(
+                    location_models,
+                    function (model) {
+                        location_model_forecasts <- location_forecasts %>%
+                            dplyr::filter(model == UQ(model)) %>%
+                            dplyr::select(
+                                target_end_date,
+                                quantile,
+                                value) %>%
+                            tidyr::pivot_wider(
+                                names_from = "quantile",
+                                names_prefix = "q",
+                                values_from = "value"
+                            )
 
-                    required_qs <- paste0("q", c("0.025", "0.25", "0.5", "0.75", "0.975"))
-                    if (!all(required_qs %in% colnames(location_model_forecasts))) {
-                        return(NULL)
-                    }
-
-                    rows_without_missing <- apply(
-                        location_model_forecasts,
-                        1,
-                        function(fc_row) {
-                            !any(is.na(fc_row))
+                        required_qs <- paste0("q", c("0.025", "0.25", "0.5", "0.75", "0.975"))
+                        if (!all(required_qs %in% colnames(location_model_forecasts))) {
+                            return(NULL)
                         }
-                    )
-                    location_model_forecasts <- location_model_forecasts[rows_without_missing, ]
-                    if (nrow(location_model_forecasts) == 0)  {
-                        return(NULL)
+
+                        rows_without_missing <- apply(
+                            location_model_forecasts,
+                            1,
+                            function(fc_row) {
+                                !any(is.na(fc_row))
+                            }
+                        )
+                        location_model_forecasts <- location_model_forecasts[rows_without_missing, ]
+                        if (nrow(location_model_forecasts) == 0)  {
+                            return(NULL)
+                        }
+
+                        return(as.list(location_model_forecasts))
                     }
+                )
+                names(location_forecasts_by_model) <- location_models
+                non_null_entries <- sapply(
+                    location_forecasts_by_model,
+                    function(component) { !is.null(component) })
+                location_forecasts_by_model <- location_forecasts_by_model[non_null_entries]
 
-                    return(as.list(location_model_forecasts))
-                }
-            )
-            names(location_forecasts_by_model) <- location_models
-            non_null_entries <- sapply(
-                location_forecasts_by_model,
-                function(component) { !is.null(component) })
-            location_forecasts_by_model <- location_forecasts_by_model[non_null_entries]
+                location_forecasts_by_model <- location_forecasts_by_model %>%
+                    jsonlite::toJSON()
 
-            location_forecasts_by_model <- location_forecasts_by_model %>%
-                jsonlite::toJSON()
-
-            writeLines(
-                location_forecasts_by_model,
-                target_filename
-            )
+                writeLines(
+                    location_forecasts_by_model,
+                    target_filename
+                )
+            }
         }
     }
 }

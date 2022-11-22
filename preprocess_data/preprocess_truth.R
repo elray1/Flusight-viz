@@ -21,8 +21,8 @@ library(covidData)
 # add in results for an older model that updated past forecasts
 # - TRUE will generate truth files only for the latest week. This will
 # be the appropriate option most of the time
-generate_latest_only <- FALSE
-# generate_latest_only <- TRUE
+# generate_latest_only <- FALSE
+generate_latest_only <- TRUE
 
 last_as_of <- lubridate::floor_date(Sys.Date(), unit = "week", week_start = 6)
 
