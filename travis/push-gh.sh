@@ -14,8 +14,8 @@ commit_website_files() {
 upload_files() {
   echo "Uploading files..."
   git fetch
-  git pull --rebase https://${GH_TOKEN}@github.com/reichlab/Covid-19-Hub-Vizualization.git
-  git push https://${GH_TOKEN}@github.com/reichlab/Covid-19-Hub-Vizualization.git HEAD:master
+  git pull --rebase https://${GH_TOKEN}@github.com/elray1/Flusight-viz.git
+  git push https://${GH_TOKEN}@github.com/elray1/Flusight-viz.git HEAD:master
   echo "pushed to github"
 }
 
